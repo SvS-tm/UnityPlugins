@@ -1,0 +1,25 @@
+<Project>
+	<PropertyGroup>
+		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+		<LangVersion>latest</LangVersion>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+	<ItemGroup>
+		<Reference Include="$(BEPIN_EX_PATH)\interop\Unity*.dll">
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="$(BEPIN_EX_PATH)\interop\Assembly-CSharp.dll">
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="$(BEPIN_EX_PATH)\interop\MyBox.dll">
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="$(BEPIN_EX_PATH)\interop\Il2Cppmscorlib.dll">
+			<Private>false</Private>
+		</Reference>
+		<Reference Exclude="$(BEPIN_EX_PATH)\core\dobby.dll" Include="$(BEPIN_EX_PATH)\core\*.dll">
+			<Private>false</Private>
+		</Reference>
+	</ItemGroup>
+</Project>

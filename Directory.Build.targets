@@ -1,0 +1,12 @@
+<Project>
+	<Target Name="PackPlugin" AfterTargets="Build" Condition="'$(IsPackable)' != 'false'">
+		<ItemGroup>
+			<OutputDlls Include="$(ProjectDir)$(OutputPath)*.dll" />
+		</ItemGroup>
+		
+		<MakeDir Directories="$(ProjectDir)$(OutputPath)plugin\bepinex\plugins\$(AssemblyName)" />
+		<Copy SourceFiles="@(OutputDlls)" DestinationFolder="$(ProjectDir)$(OutputPath)plugin\bepinex\plugins\$(AssemblyName)" />
+		<ZipDirectory SourceDirectory="$(ProjectDir)$(OutputPath)plugin" DestinationFile="$(ProjectDir)$(OutputPath)$(AssemblyName).zip" Overwrite="true" />
+		<Copy SourceFiles="$(ProjectDir)$(OutputPath)$(AssemblyName).zip" DestinationFolder="$(UserProfile)\Desktop" />
+	</Target>	
+</Project>
