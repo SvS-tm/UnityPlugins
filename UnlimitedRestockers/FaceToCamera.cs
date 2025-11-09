@@ -4,21 +4,29 @@ namespace UnlimitedRestockers;
 
 public class FaceToCamera : MonoBehaviour
 {
-    public bool UseMainCamera = true;
-    public Camera? TargetCamera;
+    private Camera? targetCamera;
+
+    public void Configure(Camera? targetCamera = null)
+    { 
+        this.targetCamera = targetCamera;
+    }
 
     public void Start()
     {
-        if (UseMainCamera && TargetCamera == null)
-            TargetCamera = Camera.main;
+        if (targetCamera == null)
+            targetCamera = Camera.main;
     }
 
     public void LateUpdate()
     {
-        if (!TargetCamera || TargetCamera is null) 
+        if (!targetCamera || targetCamera is null) 
             return;
 
-        // Face the camera while staying upright
-        transform.forward = new Vector3(TargetCamera.transform.forward.x, 0, TargetCamera.transform.forward.z);
+        transform.forward = new Vector3
+        (
+            targetCamera.transform.forward.x, 
+            0, 
+            targetCamera.transform.forward.z
+        );
     }
 }

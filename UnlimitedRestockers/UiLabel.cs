@@ -1,4 +1,8 @@
 ﻿using System;
+using System.Collections;
+using System.Linq;
+using BepInEx.Unity.IL2CPP.Utils.Collections;
+using Il2CppInterop.Runtime.Attributes;
 using UnityEngine;
 using Utilities;
 
@@ -6,6 +10,8 @@ namespace UnlimitedRestockers;
 
 public class UiLabel(IntPtr ptr) : MonoBehaviour(ptr)
 {
+    private static readonly string ContainerId = Guid.NewGuid().ToString();
+
     public string Text { get; private set; } = string.Empty;
     public Color Color { get; private set; } = Color.blue;
     public Vector3 Offset { get; private set; } = new(0f, 0.4f, 0f);
@@ -16,16 +22,17 @@ public class UiLabel(IntPtr ptr) : MonoBehaviour(ptr)
     public float MinScale { get; private set; } = 0.01f;
     public float MaxScale { get; private set; } = 0.1f;
 
-    private Transform target;
-    private Canvas canvas;
-    private RectTransform textRoot;
-    private UnityEngine.UI.Text uiText;
-    private Renderer[] renderers;
-    private Camera camera;
+    private Transform target = default!;
+    private Canvas canvas = default!;
+    private GameObject textContainer = default!;
+    private RectTransform textRoot = default!;
+    private UnityEngine.UI.Text uiText = default!;
+    private Renderer[] renderers = default!;
+    private Camera camera = default!;
 
     public void Configure
     (
-        string text = default,
+        string? text = default,
         Color? color = default,
         Vector3? offset = default,
         Vector3? scale = default,
@@ -55,22 +62,29 @@ public class UiLabel(IntPtr ptr) : MonoBehaviour(ptr)
         MaxScale = maxScale ?? MaxScale;
     }
 
+    [HideFromIl2Cpp]
+    private T_Result ThrowAndDisable<T_Result>(Exception exception)
+    { 
+        enabled = false;
+
+        throw exception;
+    }
+
     public void Awake()
     {
-        target = transform.parent;
-        camera = Camera.main;
-
         // Root has RectTransform when Canvas is added
-        canvas = gameObject.Il2CppAddComponent<Canvas>();
+        canvas = gameObject.Il2CppGetOrAddComponent<Canvas>();
         canvas.renderMode = RenderMode.WorldSpace;
         canvas.worldCamera = camera;
 
-        this.textRoot = this.Il2CppGetComponent<RectTransform>();
+        this.textRoot = this.Il2CppGetComponent<RectTransform>()
+            ?? ThrowAndDisable<RectTransform>(new InvalidOperationException("Couldn't fetch ReactTransform for Canvas"));
+
         this.textRoot.sizeDelta = new Vector2(200, 60);
         this.textRoot.localScale = Vector3.one * MinScale;
 
         // Add the Text child
-        var textContainer = new GameObject("NameText");
+        textContainer = new GameObject(ContainerId);
 
         textContainer.transform.SetParent(transform, false);
 
@@ -83,22 +97,33 @@ public class UiLabel(IntPtr ptr) : MonoBehaviour(ptr)
         uiText.color = Color;
         uiText.text = Text;
 
-        var textRoot = uiText.Il2CppGetComponent<RectTransform>();
+        var textRoot = uiText.Il2CppGetComponent<RectTransform>()
+            ?? ThrowAndDisable<RectTransform>(new InvalidOperationException("Couldn't fetch ReactTransform for UI.Text")); ;
 
         textRoot.anchorMin = textRoot.anchorMax = new Vector2(0.5f, 0.5f);
         textRoot.anchoredPosition = Vector2.zero;
         textRoot.sizeDelta = new Vector2(200, 60);
 
-        // Optional billboard
         if (FaceCamera && gameObject.Il2CppGetComponent<FaceToCamera>() == null)
         {
-            var bfaceToCamera = gameObject.Il2CppAddComponent<FaceToCamera>();
-
-            bfaceToCamera.UseMainCamera = true;
+            gameObject.Il2CppAddComponent<FaceToCamera>();
         }
+    }
 
-        // Cache target renderers (for head position)
+    private IEnumerator Init()
+    {
+        yield return new WaitForEndOfFrame();
+
+        target = transform.parent;
+        camera = Camera.main;
+
+        // Cache target renderers
         renderers = target ? target.IL2CppGetComponentsInChildren<Renderer>(true) : [];
+    }
+
+    public void OnEnable()
+    {
+        StartCoroutine(Init().WrapToIl2Cpp());
     }
 
     public void LateUpdate()
@@ -109,10 +134,10 @@ public class UiLabel(IntPtr ptr) : MonoBehaviour(ptr)
         if (camera == null) 
             camera = Camera.main;
 
-        // place above head (bounds-aware)
+        // place above target (bounds-aware)
         var headPos = target.position + Offset;
 
-        if (UseRendererBoundsForHead && renderers.Length > 0)
+        if (UseRendererBoundsForHead && renderers.Length > 0 && renderers[0] != null)
         {
             var bounds = new Bounds(renderers[0].bounds.center, Vector3.zero);
 
@@ -127,8 +152,8 @@ public class UiLabel(IntPtr ptr) : MonoBehaviour(ptr)
         // distance scaling
         if (ScaleWithDistance && camera != null)
         {
-            float distance = Vector3.Distance(camera.transform.position, transform.position);
-            float scale = Mathf.Clamp(distance / Mathf.Max(0.01f, ScaleAtDistance), MinScale, MaxScale);
+            var distance = Vector3.Distance(camera.transform.position, transform.position);
+            var scale = Mathf.Clamp(distance / Mathf.Max(0.01f, ScaleAtDistance), MinScale, MaxScale);
 
             transform.localScale = Vector3.one * scale;
         }
