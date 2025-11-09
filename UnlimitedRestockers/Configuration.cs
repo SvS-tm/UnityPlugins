@@ -23,19 +23,19 @@ public readonly struct Configuration(ConfigFile Source)
         "Binding to fire restocker"
     );
 
-    public readonly ConfigEntry<int> HireCost = Source.Bind
+    public readonly ConfigEntry<float> HireCost = Source.Bind
     (
         SettingsSectionName,
         "HiringCost",
-        150,
+        150f,
         "Cost (in dollars) to hire a restocker"
     );
 
-    public readonly ConfigEntry<int> HireCooldown = Source.Bind
+    public readonly ConfigEntry<float> HireCooldown = Source.Bind
     (
         SettingsSectionName,
         "HireCooldown",
-        1,
+        1f,
         "Cool-down time (rate per second)"
     );
 }

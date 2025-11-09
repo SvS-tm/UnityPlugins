@@ -13,7 +13,7 @@ public static class InputHelpers
     (
         this InputAction action, 
         Action callback, 
-        Func<int> cooldownSeconds
+        Func<float> cooldownSeconds
     )
     {
         var last = double.NegativeInfinity;

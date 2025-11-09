@@ -9,7 +9,7 @@ public class Patches
     [HarmonyPatch(typeof(MarketShoppingCart), nameof(MarketShoppingCart.TryAddProduct))]
     public static bool Prefix(MarketShoppingCart __instance, ItemQuantity salesItem, SalesType salesType, ref bool __result)
     {
-        NoMaxOrderLimitPlugin.Logger.LogInfo($"Try add called: {salesItem.FirstItemCount} {salesType}");
+        Plugin.Logger.LogInfo($"Try add called: {salesItem.FirstItemCount} {salesType}");
 
         __instance.AddProduct(salesItem, salesType);
 
@@ -22,7 +22,7 @@ public class Patches
     [HarmonyPatch(typeof(MarketShoppingCart), nameof(MarketShoppingCart.CartMaxed))]
     public static bool Prefix(ref bool __result)
     {
-        NoMaxOrderLimitPlugin.Logger.LogInfo($"Cart maxed called: {__result}");
+        Plugin.Logger.LogInfo($"Cart maxed called: {__result}");
 
         __result = false;
 
@@ -46,7 +46,7 @@ public class Patches
     ]
     public static void Postfix(FurnitureBox __result)
     {
-        NoMaxOrderLimitPlugin.Logger.LogInfo($"SpawnBox: {__result.Data.Bucket.LocalizedName.ToString()}");
+        Plugin.Logger.LogInfo($"SpawnBox: {__result.Data.Bucket.LocalizedName.ToString()}");
 
         if (__result.transform.position.y > 8f)
         {
@@ -73,7 +73,7 @@ public class Patches
     ]
     public static void Postfix(Box __result)
     {
-        NoMaxOrderLimitPlugin.Logger.LogInfo($"SpawnBox: {__result.Data.Product.LocalizedName.ToString()}");
+        Plugin.Logger.LogInfo($"SpawnBox: {__result.Data.Product.LocalizedName.ToString()}");
 
         if (__result.transform.position.y > 8f && !__result.Racked)
         {
