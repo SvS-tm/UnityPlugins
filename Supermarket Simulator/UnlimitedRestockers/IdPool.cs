@@ -14,9 +14,9 @@ public class IdPool(int capacity)
         return new IdPoolManipulator(this);
     }
 
-    public struct IdPoolManipulator : IDisposable
+    public readonly struct IdPoolManipulator : IDisposable
     {
-        private IdPool parent;
+        private readonly IdPool parent;
 
         public IdPoolManipulator(IdPool parent)
         {
@@ -25,7 +25,7 @@ public class IdPool(int capacity)
             this.parent = parent;
         }
 
-        public int Reserve()
+        public readonly int Reserve()
         {
             var index = Array.IndexOf(parent.pool, false);
 
@@ -57,13 +57,13 @@ public class IdPool(int capacity)
             }
         }
 
-        private void EnsureSize(int probeIndex)
+        private readonly void EnsureSize(int probeIndex)
         {
             if (probeIndex >= parent.pool.Length)
                 Array.Resize(ref parent.pool, Math.Max(parent.pool.Length * 2, probeIndex + 1));
         }
 
-        public bool Reserve(int id)
+        public readonly bool Reserve(int id)
         {
             var index = id - 1;
 
