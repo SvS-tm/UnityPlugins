@@ -182,6 +182,13 @@ public class RestockersManager(IntPtr ptr) : MonoBehaviour(ptr)
             }
 
             manager.HireRestocker(id, Plugin.Configuration.HireCost.Value);
+
+			var restockerSO = idManager.RestockerSO(id);
+
+			if (restockerSO != null)
+			{
+				restockerSO.DailyWage = Plugin.Configuration.DailyWage.Value;
+			}
         }
     }
 

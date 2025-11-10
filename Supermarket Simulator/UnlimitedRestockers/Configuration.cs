@@ -36,6 +36,14 @@ public readonly struct Configuration(ConfigFile Source)
         SettingsSectionName,
         "HireCooldown",
         1f,
-        "Cool-down time (rate per second)"
+        "Cool-down time (in seconds)"
+    );
+
+    public readonly ConfigEntry<float> DailyWage = Source.Bind
+    (
+        SettingsSectionName,
+        "DailyWage",
+        150f,
+        "Daily wage for newly hired restockers"
     );
 }
