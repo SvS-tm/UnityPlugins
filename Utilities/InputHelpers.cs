@@ -77,7 +77,7 @@ public static class InputHelpers
                     .With("modifier1", modifier1)
                     .With("modifier2", modifier2)
                     .With("button", button);
-
+                
                 break;
             }
             case [string modifier, string button]:

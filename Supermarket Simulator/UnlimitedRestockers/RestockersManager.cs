@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using BepInEx.Unity.IL2CPP.Utils.Collections;
-using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using MyBox;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -12,7 +11,7 @@ namespace UnlimitedRestockers;
 
 public class RestockersManager(IntPtr ptr) : MonoBehaviour(ptr)
 {
-    private readonly IdPool restockersIdsPool = new(6);
+	private readonly IdPool restockersIdsPool = new(6);
 	private InputAction hireRestockerAction = default!;
 	private InputAction fireRestockerAction = default!;
 
@@ -34,7 +33,7 @@ public class RestockersManager(IntPtr ptr) : MonoBehaviour(ptr)
 	private IEnumerator Init()
 	{
 		EmployeeManager manager;
-
+		
 		while ((manager = GetEmployeeManager()) == null)
 			yield return null;
 
@@ -45,7 +44,7 @@ public class RestockersManager(IntPtr ptr) : MonoBehaviour(ptr)
 		(
 			hireRestockerAction.WithCooldownCallback
 			(
-				HireRestocker, 
+				HireRestocker,
 				() => Plugin.Configuration.HireCooldown.Value
 			)
 		);
@@ -54,22 +53,22 @@ public class RestockersManager(IntPtr ptr) : MonoBehaviour(ptr)
 		(
 			fireRestockerAction.WithCooldownCallback
 			(
-				FireRestocker, 
+				FireRestocker,
 				() => Plugin.Configuration.HireCooldown.Value
 			)
 		);
 
-        Plugin.Configuration.HireRestockerBinding.SettingChanged += (_, _) =>
-        {
-            hireRestockerAction.Rebind(Plugin.Configuration.HireRestockerBinding.Value);
-        };
+		Plugin.Configuration.HireRestockerBinding.SettingChanged += (_, _) =>
+		{
+			hireRestockerAction.Rebind(Plugin.Configuration.HireRestockerBinding.Value);
+		};
 
-        Plugin.Configuration.FireRestockerBinding.SettingChanged += (_, _) =>
-        {
-            fireRestockerAction.Rebind(Plugin.Configuration.FireRestockerBinding.Value);
-        };
+		Plugin.Configuration.FireRestockerBinding.SettingChanged += (_, _) =>
+		{
+			fireRestockerAction.Rebind(Plugin.Configuration.FireRestockerBinding.Value);
+		};
 
-        var originalOnRestockerFired = manager.onRestockerFired;
+		var originalOnRestockerFired = manager.onRestockerFired;
 		var originalOnRestockerHired = manager.onRestockerHired;
 
 		manager.onRestockerFired = new Action<Restocker>
@@ -79,7 +78,7 @@ public class RestockersManager(IntPtr ptr) : MonoBehaviour(ptr)
 				originalOnRestockerFired?.Invoke(restocker);
 
 				using (var manipulator = restockersIdsPool.Manipulate())
-				{ 
+				{
 					manipulator.Release(restocker.RestockerID);
 
 					Plugin.Logger.LogInfo($"Restocker fired: {restocker.RestockerID}, [{string.Join(",", manipulator.GetReservedIds())}]");
@@ -103,114 +102,49 @@ public class RestockersManager(IntPtr ptr) : MonoBehaviour(ptr)
 					{
 						manipulator.Reserve(restocker.RestockerID);
 
-                        AttachBoardToRestocker(restocker);
+						AttachBoardToRestocker(restocker);
 					}
 				}
-            }
+			}
 		);
 
 		Plugin.Logger.LogInfo("Manager is Initialized!");
 	}
 
-    private void HireRestocker()
-    {
-        var manager = GetEmployeeManager();
-        var idManager = GetIDManager();
+	private void HireRestocker()
+	{
+		var manager = GetEmployeeManager();
+		
+		if (manager == null)
+			return;
 
-        if (manager == null || idManager == null)
-            return;
+		using (var manipulator = restockersIdsPool.Manipulate())
+		{
+			var id = manipulator.Reserve();
 
-        using (var manipulator = restockersIdsPool.Manipulate())
-        {
-            var id = manipulator.Reserve();
+			manager.HireRestocker(id, Plugin.Configuration.HireCost.Value);
+		}
+	}
 
-            Plugin.Logger.LogMessage($"Reserved id: {id}");
+	private void FireRestocker()
+	{
+		var manager = GetEmployeeManager();
 
-            if (manager.m_RestockerSpawnPositions.Count < id)
-            {
-                Plugin.Logger.LogInfo($"Trying to add new positions: {id}");
+		if (manager == null)
+			return;
 
-                var newArray = new Il2CppReferenceArray<Transform>(id);
+		using (var manipulator = restockersIdsPool.Manipulate())
+		{
+			var id = manipulator.PickToRelease();
 
-                manager.m_RestockerSpawnPositions.Il2CppCopyTo(newArray);
+			if (id != -1)
+				manager.FireRestocker(id);
+			else if (manager.m_ActiveRestockers.Count > 0)
+				manager.FireRestocker(manager.m_ActiveRestockers[0].RestockerID);
+		}
+	}
 
-                for (var index = manager.m_RestockerSpawnPositions.Count; index < id; ++index)
-                {
-                    Plugin.Logger.LogInfo($"Getting last pos: {index - 1} of {newArray.Count}");
-
-                    var lastRestockerPosition = newArray[index - 1];
-
-                    if (lastRestockerPosition == null)
-                        break;
-
-                    Plugin.Logger.LogInfo($"Success: {lastRestockerPosition.transform.position}");
-
-                    var positionWrapper = new GameObject("Patched_Restocker_Position");
-
-                    Plugin.Logger.LogInfo($"Setting parent: {lastRestockerPosition.transform.parent}");
-
-                    positionWrapper.transform.SetParent(lastRestockerPosition.transform.parent, false);
-
-                    Plugin.Logger.LogInfo($"Changing coordinates: {lastRestockerPosition.transform.position}");
-
-                    positionWrapper.transform.position = new Vector3(lastRestockerPosition.position.x + 1, lastRestockerPosition.position.y, lastRestockerPosition.position.z);
-
-                    Plugin.Logger.LogInfo($"Setting new pos: {index} of {newArray.Count}");
-
-                    newArray[index] = positionWrapper.transform;
-
-                    Plugin.Logger.LogInfo($"Added: {positionWrapper.transform.position}");
-                }
-
-                manager.m_RestockerSpawnPositions = newArray;
-            }
-
-            if (idManager.m_Restockers.Count < id)
-            {
-                Plugin.Logger.LogInfo("Trying to add new SOs...");
-
-                for (var index = idManager.m_Restockers.Count; index < id; ++index)
-                {
-                    var newSO = Instantiate(idManager.m_Restockers[^1]);
-
-                    newSO.ID = index + 1;
-
-                    idManager.m_Restockers.Add(newSO);
-
-                    Plugin.Logger.LogInfo($"Added SO: {newSO.ID}");
-                }
-            }
-
-            manager.HireRestocker(id, Plugin.Configuration.HireCost.Value);
-
-			var restockerSO = idManager.RestockerSO(id);
-
-			if (restockerSO != null)
-			{
-				restockerSO.DailyWage = Plugin.Configuration.DailyWage.Value;
-			}
-        }
-    }
-
-    private void FireRestocker()
-    {
-        var manager = GetEmployeeManager();
-
-        if (manager == null)
-            return;
-
-        using (var manipulator = restockersIdsPool.Manipulate())
-        {
-            var id = manipulator.PickToRelease();
-
-            if (id != -1)
-                manager.FireRestocker(id);
-            else if (manager.m_ActiveRestockers.Count > 0)
-                manager.FireRestocker(manager.m_ActiveRestockers[0].RestockerID);
-        }
-    }
-
-    private static void AttachBoardToRestocker(Restocker restocker)
+	private static void AttachBoardToRestocker(Restocker restocker)
 	{
 		if (!(restocker.gameObject is GameObject gameObject && gameObject != null))
 			return;
@@ -219,23 +153,39 @@ public class RestockersManager(IntPtr ptr) : MonoBehaviour(ptr)
 
 		if (components is not [UiLabel label])
 		{
-            var holder = new GameObject("NameLabel_UI");
+			var holder = new GameObject("NameLabel_UI");
 
-            holder.transform.SetParent(gameObject.transform, false);
+			holder.transform.SetParent(gameObject.transform, false);
 
-            label = holder.Il2CppAddComponent<UiLabel>();
-        }
+			label = holder.Il2CppAddComponent<UiLabel>();
+		}
 
-        label.Configure(restocker.RestockerID.ToString());
+		var id = restocker.RestockerID;
+
+		label.Configure
+		(
+			() =>
+			{
+				var employeeManager = GetEmployeeManager();
+				var idManager = GetIDManager();
+
+				var restocker = employeeManager.GetRestockerByID(id);
+				var restockerSO = idManager.RestockerSO(id);
+
+				return $"{restocker.RestockerID} ({restockerSO.DailyWage}$)";
+			}
+		);
 	}
+
+    private static IDManager GetIDManager()
+    {
+        return Singleton<IDManager>.Instance;
+    }
 
     private static EmployeeManager GetEmployeeManager()
 	{
 		return Singleton<EmployeeManager>.Instance;
 	}
 
-	private static IDManager GetIDManager()
-	{
-		return Singleton<IDManager>.Instance;
-	}
+
 }

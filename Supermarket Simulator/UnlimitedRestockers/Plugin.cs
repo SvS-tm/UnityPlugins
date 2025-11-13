@@ -1,6 +1,7 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
+using HarmonyLib;
 
 namespace UnlimitedRestockers;
 
@@ -18,6 +19,8 @@ public class Plugin : BasePlugin
     {
         Configuration = new Configuration(Config);
         Logger = Log;
+
+        Harmony.CreateAndPatchAll(typeof(Patches), PluginId);
 
         AddComponent<RestockersManager>();
 

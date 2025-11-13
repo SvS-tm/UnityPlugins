@@ -12,7 +12,7 @@ public class UiLabel(IntPtr ptr) : MonoBehaviour(ptr)
 {
     private static readonly string ContainerId = Guid.NewGuid().ToString();
 
-    public string Text { get; private set; } = string.Empty;
+    public Func<string> Text { get; private set; } = () => string.Empty;
     public Color Color { get; private set; } = Color.blue;
     public Vector3 Offset { get; private set; } = new(0f, 0.4f, 0f);
     public bool UseRendererBoundsForHead { get; private set; } = true;
@@ -32,7 +32,7 @@ public class UiLabel(IntPtr ptr) : MonoBehaviour(ptr)
 
     public void Configure
     (
-        string? text = default,
+        Func<string>? text = default,
         Color? color = default,
         Vector3? offset = default,
         Vector3? scale = default,
@@ -49,7 +49,6 @@ public class UiLabel(IntPtr ptr) : MonoBehaviour(ptr)
 
         if (uiText != null)
         { 
-            uiText.text = Text;
             uiText.color = Color;
         }
 
@@ -95,7 +94,7 @@ public class UiLabel(IntPtr ptr) : MonoBehaviour(ptr)
         uiText.resizeTextMinSize = 8;
         uiText.resizeTextMaxSize = 32;
         uiText.color = Color;
-        uiText.text = Text;
+        uiText.text = Text();
 
         var textRoot = uiText.Il2CppGetComponent<RectTransform>()
             ?? ThrowAndDisable<RectTransform>(new InvalidOperationException("Couldn't fetch ReactTransform for UI.Text")); ;
@@ -133,6 +132,8 @@ public class UiLabel(IntPtr ptr) : MonoBehaviour(ptr)
 
         if (camera == null) 
             camera = Camera.main;
+
+        uiText.text = Text();
 
         // place above target (bounds-aware)
         var headPos = target.position + Offset;
