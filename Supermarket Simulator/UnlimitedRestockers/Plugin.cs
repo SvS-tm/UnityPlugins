@@ -6,10 +6,10 @@ using HarmonyLib;
 namespace UnlimitedRestockers;
 
 [BepInProcess("Supermarket Simulator.exe")]
-[BepInPlugin(PluginId, "UnlimitedRestockers", "1.1.0")]
+[BepInPlugin(PluginId, "Unlimited Restockers", "1.1.0")]
 public class Plugin : BasePlugin
 {
-    private const string PluginId = "SvS.UnlimitedRestockers";
+    private const string PluginId = "svs-tm.unlimited-restockers";
 
     public static ManualLogSource Logger { get; private set; } = default!;
 

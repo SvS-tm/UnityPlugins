@@ -9,10 +9,8 @@ public class Patches
     [HarmonyPatch(typeof(MarketShoppingCart), nameof(MarketShoppingCart.TryAddProduct))]
     public static bool Prefix(MarketShoppingCart __instance, ItemQuantity salesItem, SalesType salesType, ref bool __result)
     {
-        Plugin.Logger.LogInfo($"Try add called: {salesItem.FirstItemCount} {salesType}");
-
         __instance.AddProduct(salesItem, salesType);
-
+        
         __result = true;
 
         return false;
@@ -22,8 +20,6 @@ public class Patches
     [HarmonyPatch(typeof(MarketShoppingCart), nameof(MarketShoppingCart.CartMaxed))]
     public static bool Prefix(ref bool __result)
     {
-        Plugin.Logger.LogInfo($"Cart maxed called: {__result}");
-
         __result = false;
 
         return false;
@@ -46,9 +42,7 @@ public class Patches
     ]
     public static void Postfix(FurnitureBox __result)
     {
-        Plugin.Logger.LogInfo($"SpawnBox: {__result.Data.Bucket.LocalizedName.ToString()}");
-
-        if (__result.transform.position.y > 8f)
+        if (__result != null && __result.transform.position.y > 8f)
         {
             float x = __result.transform.position.x;
             float z = __result.transform.position.z;
@@ -73,9 +67,7 @@ public class Patches
     ]
     public static void Postfix(Box __result)
     {
-        Plugin.Logger.LogInfo($"SpawnBox: {__result.Data.Product.LocalizedName.ToString()}");
-
-        if (__result.transform.position.y > 8f && !__result.Racked)
+        if (__result != null && __result.transform.position.y > 8f && !__result.Racked)
         {
             float x = __result.transform.position.x;
             float z = __result.transform.position.z;

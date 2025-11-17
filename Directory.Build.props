@@ -18,6 +18,9 @@
 		<Reference Include="$(BEPIN_EX_PATH)\interop\Il2Cppmscorlib.dll">
 			<Private>false</Private>
 		</Reference>
+		<Reference Include="$(BEPIN_EX_PATH)\interop\PhotonUnityNetworking.dll">
+			<Private>false</Private>
+		</Reference>
 		<Reference Exclude="$(BEPIN_EX_PATH)\core\dobby.dll" Include="$(BEPIN_EX_PATH)\core\*.dll">
 			<Private>false</Private>
 		</Reference>

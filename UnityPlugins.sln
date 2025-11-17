@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NoMaxOrderLimit", "Supermar
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnlimitedRestockers", "Supermarket Simulator\UnlimitedRestockers\UnlimitedRestockers.csproj", "{F22FDC0F-72E3-53AF-30A7-5C9C97572029}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PricesManagement", "Supermarket Simulator\PricesManagement\PricesManagement.csproj", "{B180E641-2C8F-4C62-9BDE-8763646C22EA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,6 +39,10 @@ Global
 		{F22FDC0F-72E3-53AF-30A7-5C9C97572029}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F22FDC0F-72E3-53AF-30A7-5C9C97572029}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F22FDC0F-72E3-53AF-30A7-5C9C97572029}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B180E641-2C8F-4C62-9BDE-8763646C22EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B180E641-2C8F-4C62-9BDE-8763646C22EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B180E641-2C8F-4C62-9BDE-8763646C22EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B180E641-2C8F-4C62-9BDE-8763646C22EA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -44,6 +50,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{0DDCB399-078C-A7BD-F1EF-ADC6066B6823} = {EA4FEBC8-0176-433B-9CB9-0F67A433A2EA}
 		{F22FDC0F-72E3-53AF-30A7-5C9C97572029} = {EA4FEBC8-0176-433B-9CB9-0F67A433A2EA}
+		{B180E641-2C8F-4C62-9BDE-8763646C22EA} = {EA4FEBC8-0176-433B-9CB9-0F67A433A2EA}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {3A24550C-E9F6-45FE-83AE-AAC5C894B44D}
