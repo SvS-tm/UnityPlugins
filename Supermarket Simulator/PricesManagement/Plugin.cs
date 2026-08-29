@@ -6,7 +6,7 @@ using HarmonyLib;
 namespace PricesManagement;
 
 [BepInProcess("Supermarket Simulator.exe")]
-[BepInPlugin(PluginId, "Prices Management", "1.1.0")]
+[BepInPlugin(PluginId, "Prices Management", "2.0.0")]
 public class Plugin : BasePlugin
 {
     private const string PluginId = "svs-tm.prices-management";

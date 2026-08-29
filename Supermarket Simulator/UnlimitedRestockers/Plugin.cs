@@ -6,7 +6,7 @@ using HarmonyLib;
 namespace UnlimitedRestockers;
 
 [BepInProcess("Supermarket Simulator.exe")]
-[BepInPlugin(PluginId, "Unlimited Restockers", "1.1.0")]
+[BepInPlugin(PluginId, "Unlimited Restockers", "2.0.0")]
 public class Plugin : BasePlugin
 {
     private const string PluginId = "svs-tm.unlimited-restockers";
@@ -23,6 +23,7 @@ public class Plugin : BasePlugin
         Harmony.CreateAndPatchAll(typeof(Patches), PluginId);
 
         AddComponent<RestockersManager>();
+        AddComponent<RestockerSelectionMenu>();
 
         Log.LogInfo($"{PluginId} is loaded!");
     }

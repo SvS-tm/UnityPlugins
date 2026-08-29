@@ -8,11 +8,11 @@ namespace Utilities;
 public static class Il2CppUnityExtensions
 {
     // Cache Il2Cpp types – avoids repeated lookups/locks
-    private static readonly ConcurrentDictionary<System.Type, Il2CppSystem.Type> cache = new();
+    private static readonly ConcurrentDictionary<Type, Il2CppSystem.Type> cache = new();
 
-    private static Il2CppSystem.Type ResolveIl2CppType(System.Type type)
+    private static Il2CppSystem.Type ResolveIl2CppType(Type type)
     {
-        var resolve = new System.Func<System.Type, Il2CppSystem.Type>
+        var resolve = new Func<Type, Il2CppSystem.Type>
         (
             (type) =>
             {
@@ -44,7 +44,7 @@ public static class Il2CppUnityExtensions
         var component = host.AddComponent(ResolveIl2CppType(typeof(T_Component)));
         
         if (component?.TryCast<T_Component>() is not T_Component result)
-            throw new System.InvalidCastException($"Couldn't cast component to {typeof(T_Component).FullName}");
+            throw new InvalidCastException($"Couldn't cast component to {typeof(T_Component).FullName}");
 
         return result;
     }
@@ -61,7 +61,7 @@ public static class Il2CppUnityExtensions
             component = host.AddComponent(type);
 
             if (component?.TryCast<T_Component>() is not T_Component resultForAdd)
-                throw new System.InvalidCastException($"Couldn't cast component to {typeof(T_Component).FullName}");
+                throw new InvalidCastException($"Couldn't cast component to {typeof(T_Component).FullName}");
 
             return resultForAdd;
         }

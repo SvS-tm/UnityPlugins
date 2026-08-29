@@ -1,0 +1,14 @@
+<Solution>
+  <Project Path="Utilities/Utilities.csproj" />
+  <Folder Name="/Solution Items/">
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Build.targets" />
+  </Folder>
+  <Folder Name="/Supermarket Simulator/">
+    <Project Path="Supermarket Simulator/NoMaxOrderLimit/NoMaxOrderLimit.csproj" />
+    <Project Path="Supermarket Simulator/PricesManagement/PricesManagement.csproj" />
+    <Project Path="Supermarket Simulator/UnlimitedRestockers/UnlimitedRestockers.csproj" />
+  </Folder>
+</Solution>

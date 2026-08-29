@@ -55,16 +55,25 @@ public class Patches
         {
             Plugin.Logger.LogInfo("Trying to add new SOs...");
 
-            for (var index = idManager.m_Restockers.Count; index < restockerID; ++index)
+            var originalRestockerCount = idManager.m_Restockers.Count;
+
+            for (var index = originalRestockerCount; index < restockerID; ++index)
             {
-                var newSO = Object.Instantiate(idManager.m_Restockers[^1]);
+                var newSO = UnityEngine.Object.Instantiate(idManager.m_Restockers[^1]);
+
+                // Extra IDs do not have their own game-authored RestockerSO. Reuse a
+                // random official Clerk prefab so added restockers get model variety
+                // while retaining the prefab's animator and network configuration.
+                var randomSetupIndex = UnityEngine.Random.Range(0, originalRestockerCount);
+                var randomPrefab = idManager.m_Restockers[randomSetupIndex].RestockerPrefab;
 
                 newSO.ID = index + 1;
                 newSO.DailyWage = Plugin.Configuration.DailyWage.Value;
+                newSO.RestockerPrefab = randomPrefab;
 
                 idManager.m_Restockers.Add(newSO);
 
-                Plugin.Logger.LogInfo($"Added SO: {newSO.ID}");
+                Plugin.Logger.LogInfo($"Added SO: {newSO.ID}, prefab: {randomPrefab.gameObject.name}");
             }
         }
 

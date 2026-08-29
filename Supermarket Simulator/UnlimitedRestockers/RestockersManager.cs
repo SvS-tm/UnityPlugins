@@ -1,8 +1,7 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using BepInEx.Unity.IL2CPP.Utils.Collections;
 using MyBox;
+using System.Collections;
+using Clerk = SupermarketSimulator.Clerk.Clerk;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Utilities;
@@ -68,20 +67,20 @@ public class RestockersManager(IntPtr ptr) : MonoBehaviour(ptr)
 			fireRestockerAction.Rebind(Plugin.Configuration.FireRestockerBinding.Value);
 		};
 
-		var originalOnRestockerFired = manager.onRestockerFired;
+		var originalOnClerkFired = manager.onClerkFired;
 		var originalOnRestockerHired = manager.onRestockerHired;
 
-		manager.onRestockerFired = new Action<Restocker>
+		manager.onClerkFired = new Action<Clerk>
 		(
-			(restocker) =>
+			(clerk) =>
 			{
-				originalOnRestockerFired?.Invoke(restocker);
+				originalOnClerkFired?.Invoke(clerk);
 
 				using (var manipulator = restockersIdsPool.Manipulate())
 				{
-					manipulator.Release(restocker.RestockerID);
+					manipulator.Release(clerk.EmployeeId);
 
-					Plugin.Logger.LogInfo($"Restocker fired: {restocker.RestockerID}, [{string.Join(",", manipulator.GetReservedIds())}]");
+					Plugin.Logger.LogInfo($"Restocker fired: {clerk.EmployeeId}, [{string.Join(",", manipulator.GetReservedIds())}]");
 				}
 			}
 		);
@@ -94,18 +93,17 @@ public class RestockersManager(IntPtr ptr) : MonoBehaviour(ptr)
 
 				var manager = GetEmployeeManager();
 
-				using (var manipulator = restockersIdsPool.Manipulate())
-				{
-					Plugin.Logger.LogInfo($"Restocker hired, [{string.Join(",", manipulator.GetReservedIds())}]");
+                using var manipulator = restockersIdsPool.Manipulate();
 
-					foreach (var restocker in manager.m_ActiveRestockers)
-					{
-						manipulator.Reserve(restocker.RestockerID);
+                Plugin.Logger.LogInfo($"Restocker hired, [{string.Join(",", manipulator.GetReservedIds())}]");
 
-						AttachBoardToRestocker(restocker);
-					}
-				}
-			}
+                foreach (var clerk in manager.m_ActiveRestockers)
+                {
+                    manipulator.Reserve(clerk.EmployeeId);
+
+                    AttachBoardToRestocker(clerk);
+                }
+            }
 		);
 
 		Plugin.Logger.LogInfo("Manager is Initialized!");
@@ -140,13 +138,13 @@ public class RestockersManager(IntPtr ptr) : MonoBehaviour(ptr)
 			if (id != -1)
 				manager.FireRestocker(id);
 			else if (manager.m_ActiveRestockers.Count > 0)
-				manager.FireRestocker(manager.m_ActiveRestockers[0].RestockerID);
+				manager.FireRestocker(manager.m_ActiveRestockers[0].EmployeeId);
 		}
 	}
 
-	private static void AttachBoardToRestocker(Restocker restocker)
+	private static void AttachBoardToRestocker(Clerk clerk)
 	{
-		if (!(restocker.gameObject is GameObject gameObject && gameObject != null))
+		if (!(clerk.gameObject is GameObject gameObject && gameObject != null))
 			return;
 
 		var components = gameObject.transform.IL2CppGetComponentsInChildren<UiLabel>(true);
@@ -160,7 +158,7 @@ public class RestockersManager(IntPtr ptr) : MonoBehaviour(ptr)
 			label = holder.Il2CppAddComponent<UiLabel>();
 		}
 
-		var id = restocker.RestockerID;
+		var id = clerk.EmployeeId;
 
 		label.Configure
 		(
@@ -169,10 +167,10 @@ public class RestockersManager(IntPtr ptr) : MonoBehaviour(ptr)
 				var employeeManager = GetEmployeeManager();
 				var idManager = GetIDManager();
 
-				var restocker = employeeManager.GetRestockerByID(id);
+				var activeClerk = employeeManager.GetRestockerByID(id);
 				var restockerSO = idManager.RestockerSO(id);
 
-				return $"{restocker.RestockerID} ({restockerSO.DailyWage}$)";
+				return $"{activeClerk.EmployeeId} ({restockerSO.DailyWage}$)";
 			}
 		);
 	}

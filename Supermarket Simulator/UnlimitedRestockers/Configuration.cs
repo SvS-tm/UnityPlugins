@@ -23,6 +23,14 @@ public readonly struct Configuration(ConfigFile Source)
         "Binding to fire restocker"
     );
 
+    public readonly ConfigEntry<string> RestockerMenuBinding = Source.Bind
+    (
+        BindingsSectionName,
+        "RestockerMenu",
+        "<Keyboard>/leftShift+<Keyboard>/r",
+        "Binding to open or close the active restockers menu"
+    );
+
     public readonly ConfigEntry<float> HireCost = Source.Bind
     (
         SettingsSectionName,

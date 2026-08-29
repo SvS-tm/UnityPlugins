@@ -6,7 +6,7 @@ using HarmonyLib;
 namespace NoMaxOrderLimit;
 
 [BepInProcess("Supermarket Simulator.exe")]
-[BepInPlugin(PluginId, "No Max Order Limit", "1.0.0")]
+[BepInPlugin(PluginId, "No Max Order Limit", "2.0.0")]
 public class Plugin : BasePlugin
 {
     private const string PluginId = "svs-tm.no-max-order-limit";
