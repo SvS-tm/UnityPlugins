@@ -1,5 +1,6 @@
 using MyBox;
 using Il2CppInterop.Runtime;
+using Il2CppInterop.Runtime.Attributes;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.InputSystem;
@@ -15,10 +16,12 @@ public class RestockerSelectionMenu(IntPtr ptr) : MonoBehaviour(ptr)
     private readonly List<IDisposable> resources = new(1);
 
     private InputAction menuAction = default!;
+    private CameraRotationLock? cameraRotationLock;
     private GameObject menuRoot = default!;
     private RectTransform workerList = default!;
     private Text titleText = default!;
     private Text selectionText = default!;
+    private Button hireButton = default!;
     private Button fireButton = default!;
 
     private int selectedEmployeeId = -1;
@@ -26,6 +29,7 @@ public class RestockerSelectionMenu(IntPtr ptr) : MonoBehaviour(ptr)
     private bool isOpen;
     private bool previousCursorVisible;
     private CursorLockMode previousCursorLockMode;
+    private float nextHireTime;
 
     public void Awake()
     {
@@ -55,6 +59,9 @@ public class RestockerSelectionMenu(IntPtr ptr) : MonoBehaviour(ptr)
         if (isOpen)
             RestoreCursor();
 
+        cameraRotationLock?.Dispose();
+        cameraRotationLock = null;
+
         if (menuRoot != null)
             Destroy(menuRoot);
     }
@@ -68,12 +75,8 @@ public class RestockerSelectionMenu(IntPtr ptr) : MonoBehaviour(ptr)
         // this overlay is open and restore its previous state when it closes.
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
-
-        if (Keyboard.current?.escapeKey.wasPressedThisFrame == true)
-        {
-            Close();
-            return;
-        }
+        cameraRotationLock?.Maintain();
+        hireButton.interactable = Time.unscaledTime >= nextHireTime;
 
         var signature = GetActiveWorkersSignature();
 
@@ -81,6 +84,7 @@ public class RestockerSelectionMenu(IntPtr ptr) : MonoBehaviour(ptr)
             RebuildWorkerList();
     }
 
+    [HideFromIl2Cpp]
     private void OnMenuBindingChanged(object? sender, EventArgs eventArgs)
     {
         menuAction.Rebind(Plugin.Configuration.RestockerMenuBinding.Value);
@@ -96,9 +100,12 @@ public class RestockerSelectionMenu(IntPtr ptr) : MonoBehaviour(ptr)
 
     private void Open()
     {
+        EnsureUi();
+
         previousCursorVisible = Cursor.visible;
         previousCursorLockMode = Cursor.lockState;
 
+        cameraRotationLock = CameraRotationLock.Acquire();
         isOpen = true;
         menuRoot.SetActive(true);
         Cursor.visible = true;
@@ -110,7 +117,12 @@ public class RestockerSelectionMenu(IntPtr ptr) : MonoBehaviour(ptr)
     private void Close()
     {
         isOpen = false;
-        menuRoot.SetActive(false);
+
+        if (menuRoot != null)
+            menuRoot.SetActive(false);
+
+        cameraRotationLock?.Dispose();
+        cameraRotationLock = null;
         RestoreCursor();
     }
 
@@ -124,6 +136,17 @@ public class RestockerSelectionMenu(IntPtr ptr) : MonoBehaviour(ptr)
     {
         selectedEmployeeId = employeeId;
         RebuildWorkerList();
+    }
+
+    private void HireRestocker()
+    {
+        if (Time.unscaledTime < nextHireTime)
+            return;
+
+        RestockersManager.HireRestocker();
+        nextHireTime = Time.unscaledTime + Mathf.Max(0f, Plugin.Configuration.HireCooldown.Value);
+        hireButton.interactable = false;
+        activeWorkersSignature = string.Empty;
     }
 
     private void FireSelectedWorker()
@@ -152,6 +175,8 @@ public class RestockerSelectionMenu(IntPtr ptr) : MonoBehaviour(ptr)
 
     private void RebuildWorkerList()
     {
+        EnsureUi();
+
         for (var index = workerList.childCount - 1; index >= 0; --index)
             Destroy(workerList.GetChild(index).gameObject);
 
@@ -224,12 +249,14 @@ public class RestockerSelectionMenu(IntPtr ptr) : MonoBehaviour(ptr)
     private void BuildUi()
     {
         menuRoot = new GameObject("UnlimitedRestockers_SelectionMenu");
+        DontDestroyOnLoad(menuRoot);
 
         var canvas = menuRoot.Il2CppAddComponent<Canvas>();
         menuRoot.Il2CppAddComponent<CanvasScaler>();
         menuRoot.Il2CppAddComponent<GraphicRaycaster>();
 
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.overrideSorting = true;
         canvas.sortingOrder = 10000;
 
         var panel = CreateUiObject("Panel", menuRoot.transform, out var panelRect);
@@ -285,12 +312,36 @@ public class RestockerSelectionMenu(IntPtr ptr) : MonoBehaviour(ptr)
         SetAnchoredRect(selectionText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 64f), new Vector2(-32f, 36f));
         selectionText.alignment = TextAnchor.MiddleCenter;
 
+        hireButton = CreateButton
+        (
+            "HireRestocker",
+            panel.transform,
+            $"Hire Restocker (${Plugin.Configuration.HireCost.Value:0.##})",
+            new Color(0.12f, 0.58f, 0.3f, 1f)
+        );
+        SetAnchoredRect(hireButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-118f, 16f), new Vector2(220f, 48f));
+        hireButton.onClick.AddListener((UnityAction)(Action)HireRestocker);
+        hireButton.interactable = true;
+
         fireButton = CreateButton("FireSelected", panel.transform, "Fire Selected", new Color(0.72f, 0.18f, 0.16f, 1f));
-        SetAnchoredRect(fireButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 16f), new Vector2(220f, 48f));
+        SetAnchoredRect(fireButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(118f, 16f), new Vector2(220f, 48f));
         fireButton.onClick.AddListener((UnityAction)(Action)FireSelectedWorker);
         fireButton.interactable = false;
 
         menuRoot.SetActive(false);
+    }
+
+    private void EnsureUi()
+    {
+        if (menuRoot != null && workerList != null)
+            return;
+
+        // The BepInEx behaviour survives scene transitions. Recreate the canvas if
+        // Unity or another mod removed it so the hotkey never uses stale transforms.
+        if (menuRoot != null)
+            Destroy(menuRoot);
+
+        BuildUi();
     }
 
     private static GameObject CreateUiObject(string name, Transform parent, out RectTransform rectTransform)
@@ -359,6 +410,9 @@ public class RestockerSelectionMenu(IntPtr ptr) : MonoBehaviour(ptr)
 
     private static EmployeeManager? GetEmployeeManager()
     {
-        return Singleton<EmployeeManager>.Instance;
+        return Il2CppUnityExtensions.Il2CppFindFirstObjectByType<EmployeeManager>
+        (
+            FindObjectsInactive.Include
+        );
     }
 }

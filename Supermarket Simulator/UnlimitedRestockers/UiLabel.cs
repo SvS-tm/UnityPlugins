@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections;
-using System.Linq;
 using BepInEx.Unity.IL2CPP.Utils.Collections;
 using Il2CppInterop.Runtime.Attributes;
 using UnityEngine;
@@ -11,8 +10,15 @@ namespace UnlimitedRestockers;
 public class UiLabel(IntPtr ptr) : MonoBehaviour(ptr)
 {
     private static readonly string ContainerId = Guid.NewGuid().ToString();
+    private const float VisualAnchorRefreshInterval = 0.5f;
 
-    public Func<string> Text { get; private set; } = () => string.Empty;
+    public Func<string> Text
+    {
+        [HideFromIl2Cpp]
+        get;
+        [HideFromIl2Cpp]
+        private set;
+    } = () => string.Empty;
     public Color Color { get; private set; } = Color.blue;
     public Vector3 Offset { get; private set; } = new(0f, 0.4f, 0f);
     public bool UseRendererBoundsForHead { get; private set; } = true;
@@ -27,9 +33,12 @@ public class UiLabel(IntPtr ptr) : MonoBehaviour(ptr)
     private GameObject textContainer = default!;
     private RectTransform textRoot = default!;
     private UnityEngine.UI.Text uiText = default!;
-    private Renderer[] renderers = default!;
+    private Renderer[] renderers = [];
+    private Transform? headBone;
     private Camera camera = default!;
+    private float nextVisualAnchorRefreshTime;
 
+    [HideFromIl2Cpp]
     public void Configure
     (
         Func<string>? text = default,
@@ -109,6 +118,7 @@ public class UiLabel(IntPtr ptr) : MonoBehaviour(ptr)
         }
     }
 
+    [HideFromIl2Cpp]
     private IEnumerator Init()
     {
         yield return new WaitForEndOfFrame();
@@ -116,8 +126,7 @@ public class UiLabel(IntPtr ptr) : MonoBehaviour(ptr)
         target = transform.parent;
         camera = Camera.main;
 
-        // Cache target renderers
-        renderers = target ? target.IL2CppGetComponentsInChildren<Renderer>(true) : [];
+        RefreshVisualAnchors();
     }
 
     public void OnEnable()
@@ -135,16 +144,21 @@ public class UiLabel(IntPtr ptr) : MonoBehaviour(ptr)
 
         uiText.text = Text();
 
-        // place above target (bounds-aware)
+        // CharacterModelComponent creates some of the newer employee models after
+        // this label initializes. Refresh until their animator/renderers are present.
+        if (Time.unscaledTime >= nextVisualAnchorRefreshTime)
+            RefreshVisualAnchors();
+
+        // Prefer the humanoid head bone because it follows model-specific height.
+        // Active renderer bounds remain a fallback for non-humanoid models.
         var headPos = target.position + Offset;
 
-        if (UseRendererBoundsForHead && renderers.Length > 0 && renderers[0] != null)
+        if (headBone != null && headBone.gameObject.activeInHierarchy)
         {
-            var bounds = new Bounds(renderers[0].bounds.center, Vector3.zero);
-
-            for (int index = 1; index < renderers.Length; index++) 
-                bounds.Encapsulate(renderers[index].bounds);
-
+            headPos = headBone.position + Offset;
+        }
+        else if (UseRendererBoundsForHead && TryGetActiveRendererBounds(out var bounds))
+        {
             headPos = new Vector3(bounds.center.x, bounds.max.y, bounds.center.z) + Offset;
         }
 
@@ -162,5 +176,65 @@ public class UiLabel(IntPtr ptr) : MonoBehaviour(ptr)
         {
             transform.localScale = Vector3.one * MinScale;
         }
+    }
+
+    [HideFromIl2Cpp]
+    private void RefreshVisualAnchors()
+    {
+        nextVisualAnchorRefreshTime = Time.unscaledTime + VisualAnchorRefreshInterval;
+        headBone = null;
+
+        if (target == null)
+        {
+            renderers = [];
+            return;
+        }
+
+        renderers = target.IL2CppGetComponentsInChildren<Renderer>(false);
+        var animators = target.IL2CppGetComponentsInChildren<Animator>(false);
+
+        foreach (var animator in animators)
+        {
+            if (animator == null || !animator.gameObject.activeInHierarchy)
+                continue;
+
+            try
+            {
+                var candidate = animator.GetBoneTransform(HumanBodyBones.Head);
+
+                if (candidate != null)
+                {
+                    headBone = candidate;
+                    break;
+                }
+            }
+            catch
+            {
+                // Some employee animators are not humanoid; renderer bounds handle them.
+            }
+        }
+    }
+
+    [HideFromIl2Cpp]
+    private bool TryGetActiveRendererBounds(out Bounds bounds)
+    {
+        bounds = default;
+        var foundRenderer = false;
+
+        foreach (var renderer in renderers)
+        {
+            if (renderer == null || !renderer.enabled || !renderer.gameObject.activeInHierarchy)
+                continue;
+
+            if (foundRenderer)
+                bounds.Encapsulate(renderer.bounds);
+            else
+            {
+                bounds = renderer.bounds;
+                foundRenderer = true;
+            }
+        }
+
+        return foundRenderer;
     }
 }

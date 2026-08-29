@@ -117,4 +117,20 @@ public static class Il2CppUnityExtensions
 
         return result;
     }
+
+    public static T_Object? Il2CppFindFirstObjectByType<T_Object>
+    (
+        UnityEngine.FindObjectsInactive findObjectsInactive = UnityEngine.FindObjectsInactive.Exclude
+    )
+        where T_Object : UnityEngine.Object
+    {
+        var objects = UnityEngine.Object.FindObjectsByType
+        (
+            ResolveIl2CppType(typeof(T_Object)),
+            findObjectsInactive,
+            UnityEngine.FindObjectsSortMode.None
+        );
+
+        return objects.Count > 0 ? objects[0].TryCast<T_Object>() : null;
+    }
 }

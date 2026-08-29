@@ -1,5 +1,6 @@
 using BepInEx.Unity.IL2CPP.Utils.Collections;
-using MyBox;
+using Il2CppInterop.Runtime.Attributes;
+using Photon.Pun;
 using System.Collections;
 using Clerk = SupermarketSimulator.Clerk.Clerk;
 using UnityEngine;
@@ -10,6 +11,7 @@ namespace UnlimitedRestockers;
 
 public class RestockersManager(IntPtr ptr) : MonoBehaviour(ptr)
 {
+	private static EmployeeManager? employeeManager;
 	private readonly IdPool restockersIdsPool = new(6);
 	private InputAction hireRestockerAction = default!;
 	private InputAction fireRestockerAction = default!;
@@ -29,12 +31,15 @@ public class RestockersManager(IntPtr ptr) : MonoBehaviour(ptr)
 		}
 	}
 
+	[HideFromIl2Cpp]
 	private IEnumerator Init()
 	{
-		EmployeeManager manager;
+		EmployeeManager? manager;
 		
 		while ((manager = GetEmployeeManager()) == null)
 			yield return null;
+
+		HiringDiagnostics.RecordManager("Plugin selected EmployeeManager", manager);
 
 		hireRestockerAction = InputHelpers.ParseAction("hireRestockerAction", Plugin.Configuration.HireRestockerBinding.Value);
 		fireRestockerAction = InputHelpers.ParseAction("fireRestockerAction", Plugin.Configuration.FireRestockerBinding.Value);
@@ -91,7 +96,10 @@ public class RestockersManager(IntPtr ptr) : MonoBehaviour(ptr)
 			{
 				originalOnRestockerHired?.Invoke();
 
-				var manager = GetEmployeeManager();
+	                var manager = GetEmployeeManager();
+
+	                if (manager == null)
+	                    return;
 
                 using var manipulator = restockersIdsPool.Manipulate();
 
@@ -109,18 +117,86 @@ public class RestockersManager(IntPtr ptr) : MonoBehaviour(ptr)
 		Plugin.Logger.LogInfo("Manager is Initialized!");
 	}
 
-	private void HireRestocker()
+	[HideFromIl2Cpp]
+	public static void HireRestocker()
 	{
 		var manager = GetEmployeeManager();
-		
 		if (manager == null)
 			return;
 
-		using (var manipulator = restockersIdsPool.Manipulate())
+		// Extra-ID definitions are local; do not attempt an unsynchronized hire
+		// in multiplayer. This patch follows the verified single-player path.
+		if (PhotonNetwork.IsConnected)
 		{
-			var id = manipulator.Reserve();
+			Plugin.Logger.LogWarning("Plugin hiring currently supports single-player only.");
+			return;
+		}
 
-			manager.HireRestocker(id, Plugin.Configuration.HireCost.Value);
+		var hiringCost = Plugin.Configuration.HireCost.Value;
+		if (!float.IsFinite(hiringCost) || hiringCost < 0)
+		{
+			Plugin.Logger.LogError("HiringCost must be a finite, non-negative value.");
+			return;
+		}
+
+		// Avoid IDs that are still in the save but have not spawned yet, as well
+		// as active IDs. Failed attempts must not reserve an ID in our pool.
+		var occupiedIds = new HashSet<int>();
+		foreach (var clerk in manager.m_ActiveRestockers)
+			occupiedIds.Add(clerk.EmployeeId);
+		foreach (var savedId in manager.m_RestockersData)
+			occupiedIds.Add(savedId);
+
+		var id = 1;
+		while (occupiedIds.Contains(id))
+			id++;
+
+		try
+		{
+			var moneyManager = MoneyManager.Instance;
+			if (moneyManager == null)
+				throw new InvalidOperationException("MoneyManager is not available.");
+
+			if (!moneyManager.HasMoney(hiringCost))
+			{
+				Plugin.Logger.LogWarning($"Cannot hire restocker {id}: not enough money for {hiringCost}.");
+				return;
+			}
+
+			// Validate before the game's HireRestocker debits money. The spawn
+			// prefix repeats capacity preparation so loading saves works too.
+			Patches.EnsureRestockerCapacity(manager, id);
+			if (EmployeeGenerator.Instance == null)
+				throw new InvalidOperationException("EmployeeGenerator is not available.");
+
+			Plugin.Logger.LogInfo($"Requesting restocker hire: {id}, cost: {hiringCost}");
+			try
+			{
+				manager.HireRestocker(id, hiringCost);
+			}
+			catch (Exception exception)
+			{
+				Plugin.Logger.LogError($"HireRestocker failed for ID {id}: {exception}");
+			}
+
+			if (manager.GetRestockerByID(id) != null)
+				return;
+
+			// Native HireRestocker charges BEFORE adding this previously unused
+			// saved ID. If spawning failed, undo that purchase, not an existing hire.
+			if (manager.m_RestockersData.Remove(id))
+			{
+				moneyManager.MoneyTransition(hiringCost, MoneyManager.TransitionType.STAFF, true);
+				Plugin.Logger.LogWarning($"Restocker {id} did not spawn; removed its new saved ID and refunded {hiringCost}.");
+			}
+			else
+			{
+				Plugin.Logger.LogWarning($"Restocker {id} was not hired; no saved ID was added.");
+			}
+		}
+		catch (Exception exception)
+		{
+			Plugin.Logger.LogError($"Cannot hire restocker {id}: {exception}");
 		}
 	}
 
@@ -164,25 +240,38 @@ public class RestockersManager(IntPtr ptr) : MonoBehaviour(ptr)
 		(
 			() =>
 			{
-				var employeeManager = GetEmployeeManager();
-				var idManager = GetIDManager();
+					var employeeManager = GetEmployeeManager();
+					var idManager = GetIDManager();
 
-				var activeClerk = employeeManager.GetRestockerByID(id);
-				var restockerSO = idManager.RestockerSO(id);
+					if (employeeManager == null)
+						return id.ToString();
 
-				return $"{activeClerk.EmployeeId} ({restockerSO.DailyWage}$)";
+					var activeClerk = employeeManager.GetRestockerByID(id);
+					var restockerSO = idManager.RestockerSO(id);
+
+					return activeClerk == null
+						? id.ToString()
+						: $"{activeClerk.EmployeeId} ({restockerSO.DailyWage}$)";
 			}
 		);
 	}
 
     private static IDManager GetIDManager()
     {
-        return Singleton<IDManager>.Instance;
+        return IDManager.Instance;
     }
 
-    private static EmployeeManager GetEmployeeManager()
+	private static EmployeeManager? GetEmployeeManager()
 	{
-		return Singleton<EmployeeManager>.Instance;
+		if (employeeManager != null)
+			return employeeManager;
+
+		employeeManager = Il2CppUnityExtensions.Il2CppFindFirstObjectByType<EmployeeManager>
+		(
+			FindObjectsInactive.Include
+		);
+
+		return employeeManager;
 	}
 
 

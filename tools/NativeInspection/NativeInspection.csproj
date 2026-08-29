@@ -1,0 +1,22 @@
+<Project>
+  <PropertyGroup>
+    <ImportDirectoryBuildProps>false</ImportDirectoryBuildProps>
+    <ImportDirectoryBuildTargets>false</ImportDirectoryBuildTargets>
+  </PropertyGroup>
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="LibCpp2IL" HintPath="$(BEPIN_EX_PATH)\core\LibCpp2IL.dll" />
+    <Reference Include="AssetRipper.Primitives" HintPath="$(BEPIN_EX_PATH)\core\AssetRipper.Primitives.dll" />
+    <Reference Include="WasmDisassembler" HintPath="$(BEPIN_EX_PATH)\core\WasmDisassembler.dll" />
+    <Reference Include="Iced" HintPath="$(BEPIN_EX_PATH)\core\Iced.dll" />
+  </ItemGroup>
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+</Project>

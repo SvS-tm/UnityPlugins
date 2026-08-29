@@ -54,14 +54,12 @@ public static class InputHelpers
 
         action.Disable();
 
-        // Split by '+' for chords; require every token to be a valid control path
+        // Input devices do not exist yet when BepInEx loads plugins. Keep the paths
+        // unresolved here; InputSystem resolves them automatically when devices appear.
         var parameters = value.Split('+')
             .Select(parameter => parameter.Trim())
             .Where(parameter => parameter.Length > 0)
             .ToArray();
-
-        foreach (var part in parameters)
-            ValidateControlPathOrThrow(part);
 
         for (var index = 0; index < action.bindings.Count; ++index)
             action.ChangeBinding(index).Erase();
@@ -118,11 +116,4 @@ public static class InputHelpers
         }
     }
 
-    private static void ValidateControlPathOrThrow(string path)
-    {
-        if (InputSystem.FindControl(path) == null)
-        {
-            throw new ArgumentException($"Invalid control path: '{path}'\nAvailable paths\n{string.Join("\n", GetAvailablePaths())}.");
-        }
-    }
 }

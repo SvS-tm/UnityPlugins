@@ -21,6 +21,13 @@ public class Plugin : BasePlugin
         Logger = Log;
 
         Harmony.CreateAndPatchAll(typeof(Patches), PluginId);
+        Log.LogInfo("[HireFix v2] Extra-ID single-player Clerk spawn patch enabled; original IDs 1-6 unchanged.");
+
+        if (Configuration.TraceHiring.Value)
+        {
+            Harmony.CreateAndPatchAll(typeof(HiringDiagnostics), PluginId + ".hire-trace");
+            Log.LogInfo($"[HireTrace v2] Logging enabled. Game={UnityEngine.Application.version}, Unity={UnityEngine.Application.unityVersion}");
+        }
 
         AddComponent<RestockersManager>();
         AddComponent<RestockerSelectionMenu>();

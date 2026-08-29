@@ -7,6 +7,14 @@ public readonly struct Configuration(ConfigFile Source)
     private const string BindingsSectionName = "Bindings";
     private const string SettingsSectionName = "Settings";
 
+    public readonly ConfigEntry<bool> TraceHiring = Source.Bind
+    (
+        "Diagnostics",
+        "TraceHiring",
+        true,
+        "Log detailed hiring/spawning calls. Logging only: does not disable hiring. Restart the game after changing this setting."
+    );
+
     public readonly ConfigEntry<string> HireRestockerBinding = Source.Bind
     (
         BindingsSectionName, 
